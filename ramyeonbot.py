@@ -7,6 +7,7 @@
 import requests
 from requests.exceptions import HTTPError
 import time
+import csv
 
 #dev_server = "http://idev.lemoncloud.io"
 local_server = "http://localhost"
@@ -15,7 +16,7 @@ poolsAPI = ":8084/item-pools/"
 
 server = local_server
 
-# 1) Get horse list from remote and save into csv
+# 1) Get list from remote and save into csv
 def getListfromRemote(nv_mid):
     # Ex. http://localhost:8080/bots/60
     url = server+botAPI
@@ -41,7 +42,8 @@ def getListfromRemote(nv_mid):
                 nodes = result['nodes']
                 for index,node in enumerate(nodes):
                     if 'rank' in node:
-                        ramyeon_list.append(node['id'])
+                        # Append id to list
+                        ramyeon_list.append(node)
                         print("Info: index:",index,"/page:",page)
 
         except HTTPError:
@@ -70,7 +72,7 @@ def getDetailInfo(id):
         result = r.json()['result']
         detail_info = result
     except HTTPError:
-        print("Error: getListfromRemote() failed (Status Code:",r.status_code,")")
+        print("Error: getDetailInfo() failed (Status Code:",r.status_code,")")
         raise HTTPError
     
     return detail_info
@@ -95,32 +97,70 @@ def doCreateItem(detailInfo):
     # Sleep 1 sec to avoid heavy load on the website
     time.sleep(1)
 
+# save Node to CSV
+# file name: nv_mid{nv_mid}.csv
+def saveNodeToCSV(nv_mid,nodes):
+    filename = "nv_mid:" + str(nv_mid) + ".csv"
+
+    f = open(filename, 'w', encoding='utf-8', newline='')
+    wr = csv.writer(f)
+    wr.writerow(["id", "name", "mall", "price", "delivery"])
+    for node in nodes:
+            wr.writerow([node["id"],node["name"],node["mall"],node["price"],node["delivery"]])
+
+    f.close()
+
 def main():
-    try:
-        # 1) Get ramyeon from remote and save it into array
-        nv_mid = 5640980426
-        mall_list = getListfromRemote(nv_mid) # 5640980426: 진라면 매운맛
-        print(mall_list)
+
+    nv_mids = [
+        5640980426, #오뚜기 진라면 매운맛 120g
+        5640996976, #오뚜기 진라면 순한맛 120g
+        6359445024, #오뚜기 진라면 매운맛 110g
+        5716182795, #오뚜기 진라면컵 순한맛 65g
+        5716181948, #오뚜기 진라면컵 매운맛 65g
+        8583124560, #오뚜기 진라면 순한맛 110g
+        1185307259, #삼양라면 120g
+        13046260762, #삼양 까르보 불닭볶음면 130g
+        13753480413, #삼양 짜장 불닭볶음면 140g
+        6344210326, #삼양 불닭볶음면 140g
+    ]
+
+    for index, nv_mid in enumerate(nv_mids):
+        # Print progress
+        print(nv_mid,"(",index +1 ,"/",len(nv_mids),")")
+
+        try:
+            # 1) Get ramyeon from remote and save it into array
+            mall_list = getListfromRemote(nv_mid)
+            #print(mall_list)
+            
+
+            # 1-1) save mall_list to csv
+            # Save node to csv
+            saveNodeToCSV(nv_mid,mall_list)   
+
+            # For Test
+            #mall_list = ['13851053793']
         
-        # For Test
-        #mall_list = ['13851053793']
-    
-        # 2) Get detail ramyeon info from bot
-        for ns_id in mall_list:
-            detailInfo = getDetailInfo(ns_id)
-            
-            # !important! Link nv_mid(item mid) to detail info
-            detailInfo['nv_mid'] = nv_mid
-            
-            print(detailInfo)
-    
-            # 3) Create item using ramyeon info
-            doCreateItem(detailInfo)
+            # 2) Get detail ramyeon info from bot
+            for mall in mall_list:
+                ns_id = mall['id']
+                detailInfo = getDetailInfo(ns_id)
+                
+                # !important! Link nv_mid(item mid) to detail info
+                detailInfo['nv_mid'] = nv_mid
+                
+                #print(detailInfo)
+        
+                # 3) Create item using ramyeon info
+                doCreateItem(detailInfo)
 
-    except HTTPError:
-        print("Error: Terminated abnormally by HTTPError")
+        except HTTPError:
+            print("Error: Terminated abnormally by HTTPError")
 
-    print("Info: Create is completed successfully")
+        print("Info: Create with niv_md",nv_mid," is completed successfully")
+    
+    print("Info: All completed successfully")
 
 if __name__ == "__main__":
     main()
