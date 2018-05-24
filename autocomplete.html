@@ -22,12 +22,13 @@
       source: function (request, response) {
         var postData = {
           "query": {
-            "prefix": { "l_rh_name": request.term }
+            "match" : { "l_rh_name" : request.term  }
           }
         }
         $.ajax({
           method: "POST",
-          url: "http://idev.lemoncloud.io:9200/horses-v1/_search",
+          //url: "http://idev.lemoncloud.io:9200/horses-v1/_search",
+          url: "http://localhost:9200/horses-v1/_search",
           crossDomain: false,
           async: false,
           data: JSON.stringify(postData),
